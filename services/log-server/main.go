@@ -72,8 +72,7 @@ func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Select store backend
-	storeType := getEnv("STORE", "memory") // memory | file
+	storeType := getEnv("STORE", "memory")
 	var store storage.LogStore
 	if storeType == "file" {
 		path := getEnv("STORE_PATH", "/data/logs.jsonl")

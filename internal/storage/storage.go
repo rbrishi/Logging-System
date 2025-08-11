@@ -10,14 +10,12 @@ import (
 	"motadata/internal/model"
 )
 
-// LogStore defines abstract storage for logs so we can plug different backends.
 type LogStore interface {
 	Ingest(entry model.LogEntry) error
 	Query(filter QueryFilter) ([]model.LogEntry, error)
 	Metrics() Metrics
 }
 
-// QueryFilter supports basic filtering and sorting.
 type QueryFilter struct {
 	Service       string
 	Level         string
@@ -33,7 +31,6 @@ type Metrics struct {
 	BySeverity map[string]int
 }
 
-// InMemoryStore provides a threadsafe in-memory log store.
 type InMemoryStore struct {
 	mu    sync.RWMutex
 	logs  []model.LogEntry
@@ -103,7 +100,6 @@ func (s *InMemoryStore) Query(filter QueryFilter) ([]model.LogEntry, error) {
 func (s *InMemoryStore) Metrics() Metrics {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	// Copy maps to avoid external mutation
 	mCat := make(map[string]int, len(s.byCat))
 	mSev := make(map[string]int, len(s.bySev))
 	for k, v := range s.byCat {
@@ -115,9 +111,7 @@ func (s *InMemoryStore) Metrics() Metrics {
 	return Metrics{Total: s.total, ByCategory: mCat, BySeverity: mSev}
 }
 
-// Utility for parsing severity code like "<86>" into a symbolic level.
 func SeverityFromCode(code int) string {
-	// Map basic ranges to levels; simple heuristic
 	switch {
 	case code <= 3:
 		return "ERROR"
@@ -128,7 +122,6 @@ func SeverityFromCode(code int) string {
 	}
 }
 
-// ParseTimestamp gracefully parses a RFC3339 time or returns now.
 func ParseTimestamp(ts string) time.Time {
 	if ts == "" {
 		return time.Now().UTC()

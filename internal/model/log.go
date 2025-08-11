@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// LogEntry represents a structured, parsed log as stored by the central log server.
+
 type LogEntry struct {
 	Timestamp       time.Time `json:"timestamp"`
 	EventCategory   string    `json:"event.category"`

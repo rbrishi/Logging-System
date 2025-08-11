@@ -33,9 +33,7 @@ var (
 	blacklistIPs   = map[string]struct{}{"10.0.0.13": {}, "192.168.1.66": {}}
 )
 
-// Regexes for simple syslog-like message parsing
 var (
-	// e.g. <86> hostname sudo: pam_unix(sudo:session): session opened for user root(uid=0)
 	reSyslog = regexp.MustCompile(`^<(\d+)>\s+(\S+)\s+([^:]+):\s+(.*)$`)
 	reUser   = regexp.MustCompile(`user\s+([A-Za-z0-9_-]+)`)
 )
@@ -43,7 +41,6 @@ var (
 func parseSeverity(codeStr string) string {
 	code := 6 // default info-ish
 	if codeStr != "" {
-		// ignore error; already defaulted
 		if n, err := strconv.Atoi(codeStr); err == nil {
 			code = n
 		}
@@ -63,7 +60,6 @@ func enrichLog(entry *model.LogEntry) {
 		entry.IsBlacklisted = true
 		return
 	}
-	// naive IP search in raw message
 	for ip := range blacklistIPs {
 		if strings.Contains(entry.RawMessage, ip) {
 			entry.IsBlacklisted = true
@@ -87,13 +83,11 @@ func parseLog(cl ClientLog) model.LogEntry {
 		RawMessage:      cl.Message,
 		Service:         strings.ToLower(cl.Source) + "_" + strings.ReplaceAll(strings.ToLower(cl.Category), ".", "_"),
 	}
-	// Parse severity, hostname, and username from message where possible
 	if m := reSyslog.FindStringSubmatch(cl.Message); len(m) == 5 {
 		entry.Severity = parseSeverity(m[1])
 		if entry.Hostname == "" {
 			entry.Hostname = m[2]
 		}
-		// Try to get username
 		if u := reUser.FindStringSubmatch(cl.Message); len(u) == 2 {
 			entry.Username = u[1]
 		}
@@ -120,7 +114,6 @@ func forwardLog(entry model.LogEntry, endpoint string) error {
 	return nil
 }
 
-// Metrics for collector
 type collectorMetrics struct {
 	mu    sync.RWMutex
 	total int
@@ -174,7 +167,6 @@ func startMetricsServer(addr string, m *collectorMetrics) {
 	}()
 }
 
-// listenTCP accepts connections and emits ClientLog messages to the channel
 func listenTCP(addr string, out chan<- ClientLog) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -215,14 +207,12 @@ func listenTCP(addr string, out chan<- ClientLog) error {
 }
 
 func main() {
-	// Config via env
 	listenAddr := getEnv("LISTEN_ADDR", ":9000")
 	serverIngest := getEnv("SERVER_INGEST", "http://log-server:8000/ingest")
-	// Start metrics server
 	m := newCollectorMetrics()
 	startMetricsServer(":8080", m)
 
-	// Channel and worker pool
+	// Ch	annel and worker pool
 	ch := make(chan ClientLog, 1024)
 	if err := listenTCP(listenAddr, ch); err != nil {
 		log.Fatalf("listen error: %v", err)
@@ -241,7 +231,6 @@ func main() {
 			defer wg.Done()
 			for cl := range ch {
 				entry := parseLog(cl)
-				// update metrics before forwarding
 				m.inc(entry.EventCategory, entry.Severity)
 				if err := forwardLog(entry, serverIngest); err != nil {
 					log.Printf("forward error: %v", err)

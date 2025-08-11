@@ -13,7 +13,6 @@ func TestIngestAndQuery(t *testing.T) {
 	_ = store.Ingest(model.LogEntry{Timestamp: now, EventCategory: "login.audit", Severity: "INFO", Username: "alice", Service: "linux_login", RawMessage: "msg"})
 	_ = store.Ingest(model.LogEntry{Timestamp: now.Add(time.Second), EventCategory: "logout.audit", Severity: "ERROR", Username: "bob", Service: "linux_logout", RawMessage: "msg2", IsBlacklisted: true})
 
-	// Query by service
 	res, err := store.Query(QueryFilter{Service: "linux_login"})
 	if err != nil {
 		t.Fatalf("query error: %v", err)
@@ -22,7 +21,6 @@ func TestIngestAndQuery(t *testing.T) {
 		t.Fatalf("unexpected result: %+v", res)
 	}
 
-	// Query by is.blacklisted
 	v := true
 	res, err = store.Query(QueryFilter{IsBlacklisted: &v})
 	if err != nil {

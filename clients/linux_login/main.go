@@ -24,7 +24,7 @@ func randomHostname() string {
 }
 
 func main() {
-	addr := "log-collector:9000" // hardcoded per assignment
+	addr := "log-collector:9000"
 	d := net.Dialer{Timeout: 5 * time.Second}
 	for {
 		conn, err := d.Dial("tcp", addr)
