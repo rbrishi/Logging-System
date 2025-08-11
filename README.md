@@ -6,36 +6,84 @@
 - `services/log-collector`: TCP listener on `:9000`, parses/enriches logs, forwards to `log-server` `POST /ingest`, exposes `/metrics` on `:8080`.
 - `services/log-server`: Receives logs on `:8000` (`/ingest`), serves `GET /logs`, `GET /metrics`, `GET /healthz`.
 
-### Run with Docker
+### Setup (Docker)
 
-1. Build and start all services:
+1) Prerequisites
+- Docker Desktop 4.x with Compose V2
+
+2) Build and start
 
 ```
-docker compose up --build
+docker compose up --build -d
 ```
 
-2. Endpoints and Ports:
+3) Verify health
+- Collector health: `http://localhost:8080/healthz` (HTTP 200)
+- Server health: `http://localhost:8000/healthz` (HTTP 200)
 
-- Collector: `http://localhost:8080/metrics` (metrics), TCP `localhost:9000`
-- Server: `http://localhost:8000`
-  - `POST /ingest`
-  - `GET /logs` query params: `service`, `level`, `username`, `is.blacklisted`, `limit`, `sort`
-  - `GET /metrics`
-  - `GET /healthz`
+4) Endpoints and Ports
+- Collector
+  - Metrics: `GET http://localhost:8080/metrics`
+  - TCP listener: `localhost:9000`
+- Server
+  - `POST http://localhost:8000/ingest`
+  - `GET http://localhost:8000/logs`
+  - `GET http://localhost:8000/metrics`
+  - `GET http://localhost:8000/healthz`
 
-3. Example queries:
+5) Persistence
+- `log-server` runs with `STORE=file` and writes JSONL to `/data/logs.jsonl` (persisted via Docker volume `logdata`).
 
-- `GET /logs?service=linux_login_audit`
-- `GET /logs?level=error`
-- `GET /logs?service=linux_login_audit&level=warn`
-- `GET /logs?username=root&is.blacklisted=true`
-- `GET /logs?limit=10&sort=timestamp`
+### API usage (curl)
 
-Send a sample log to collector via TCP:
+Ingest directly into server (normally done by collector):
+
+```
+curl -s -X POST http://localhost:8000/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "timestamp": "2025-07-29T12:35:24Z",
+    "event.category": "login.audit",
+    "event.source.type": "linux",
+    "username": "alice",
+    "hostname": "aiops9242",
+    "severity": "INFO",
+    "service": "linux_login_audit",
+    "raw.message": "<86> aiops9242 sudo: pam_unix(sudo:session): session opened for user alice(uid=0)",
+    "is.blacklisted": false
+  }'
+```
+
+Query logs with filters and pagination/sorting:
+
+```
+curl -s 'http://localhost:8000/logs?service=linux_login_audit'
+curl -s 'http://localhost:8000/logs?level=error'
+curl -s 'http://localhost:8000/logs?service=linux_login_audit&level=warn'
+curl -s 'http://localhost:8000/logs?username=root&is.blacklisted=true'
+curl -s 'http://localhost:8000/logs?limit=10&sort=timestamp'
+```
+
+Send a sample client log to the collector over TCP (collector parses/enriches and forwards):
 
 ```
 printf '{"timestamp":"%s","hostname":"aiops9242","event.source.type":"linux","event.category":"login.audit","message":"<86> aiops9242 sudo: pam_unix(sudo:session): session opened for user root(uid=0) by motadata(uid=1000)"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" | nc localhost 9000
 ```
+
+Metrics:
+
+```
+curl -s http://localhost:8080/metrics | jq
+curl -s http://localhost:8000/metrics | jq
+```
+
+### Postman
+
+- Create a new collection with requests:
+  - POST `http://localhost:8000/ingest` (raw JSON body as above)
+  - GET `http://localhost:8000/logs?service=linux_login_audit`
+  - GET `http://localhost:8080/metrics`
+  - GET `http://localhost:8000/metrics`
 
 ### Components
 

@@ -3,7 +3,7 @@ services:
   log-server:
     build: ./services/log-server
     environment:
-      - STORE=memory
+      - STORE=file
       - STORE_PATH=/data/logs.jsonl
       - LISTEN_ADDR=:8000
     ports:
