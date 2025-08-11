@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+  log-server:
+    build: ./services/log-server
+    environment:
+      - STORE=memory
+      - STORE_PATH=/data/logs.jsonl
+      - LISTEN_ADDR=:8000
+    ports:
+      - "8000:8000"
+    restart: always
+    volumes:
+      - logdata:/data
+    networks:
+      - lognet
+
+  log-collector:
+    build: ./services/log-collector
+    environment:
+      - LISTEN_ADDR=:9000
+      - SERVER_INGEST=http://log-server:8000/ingest
+    ports:
+      - "9000:9000"
+      - "8080:8080"
+    depends_on:
+      - log-server
+    restart: always
+    networks:
+      - lognet
+
+  client-linux-login:
+    build: ./clients/linux_login
+    depends_on:
+      - log-collector
+    restart: always
+    networks:
+      - lognet
+
+  client-linux-logout:
+    build: ./clients/linux_logout
+    depends_on:
+      - log-collector
+    restart: always
+    networks:
+      - lognet
+
+networks:
+  lognet:
+    driver: bridge
+
+volumes:
+  logdata:
