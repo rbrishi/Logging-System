@@ -1,7 +1,8 @@
-version: "3.9"
 services:
   log-server:
-    build: ./services/log-server
+    build:
+      context: .
+      dockerfile: services/log-server/Dockerfile
     environment:
       - STORE=file
       - STORE_PATH=/data/logs.jsonl
@@ -15,7 +16,9 @@ services:
       - lognet
 
   log-collector:
-    build: ./services/log-collector
+    build:
+      context: .
+      dockerfile: services/log-collector/Dockerfile
     environment:
       - LISTEN_ADDR=:9000
       - SERVER_INGEST=http://log-server:8000/ingest
